@@ -9,7 +9,7 @@ against it over Postgrex.
 ```elixir
 def deps do
   [
-    {:cockroach_local, github: "weftspun/cockroach_local"}
+    {:cockroach_local, github: "weftspun/cockroach-local"}
   ]
 end
 ```
