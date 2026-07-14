@@ -16,14 +16,14 @@ defmodule CockroachLocalTest do
   end
 
   describe "bin/1" do
-    test "prefers an explicit existing :bin" do
-      assert {:ok, path} = CockroachLocal.bin(bin: System.find_executable("sh"))
+    test "resolves via the :bin_env env var" do
+      System.put_env("COCKROACH_BIN_TEST", System.find_executable("sh"))
+      assert {:ok, path} = CockroachLocal.bin(bin_env: "COCKROACH_BIN_TEST")
       assert String.ends_with?(path, "sh")
+      System.delete_env("COCKROACH_BIN_TEST")
     end
 
     test "errors clearly when nothing resolves" do
-      # A bogus env var name that is unset, no :bin, no priv_app, and (assuming
-      # cockroach is not on PATH in CI) no PATH hit.
       case System.find_executable("cockroach") do
         nil -> assert {:error, _msg} = CockroachLocal.bin(bin_env: "COCKROACH_BIN_UNSET_XYZ")
         _ -> assert {:ok, _} = CockroachLocal.bin(bin_env: "COCKROACH_BIN_UNSET_XYZ")
@@ -40,12 +40,6 @@ defmodule CockroachLocalTest do
 
     test "asset_url/1 rejects unsupported targets" do
       assert {:error, :unsupported_target} = CockroachLocal.Provision.asset_url({:plan9, :sparc})
-    end
-
-    test "targets/0 lists the three supported triplets" do
-      assert {:linux, :x86_64} in CockroachLocal.Provision.targets()
-      assert {:darwin, :aarch64} in CockroachLocal.Provision.targets()
-      assert {:windows, :x86_64} in CockroachLocal.Provision.targets()
     end
   end
 end

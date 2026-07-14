@@ -57,7 +57,6 @@ defmodule CockroachLocal do
     * `:port` — SQL port (default #{@default_port}).
     * `:data_dir` — store path (see `default_data_dir/1`).
     * `:db_url` — connect to an external cluster instead of spawning a node.
-    * `:username` / `:database` — connection identity (default `root` / `defaultdb`).
     * `:bin` / `:bin_env` / `:priv_app` — binary resolution (see `bin/1`).
   """
   @spec with_db(opts(), (pid() -> result)) :: result | {:error, term()} when result: var
@@ -106,8 +105,8 @@ defmodule CockroachLocal do
   end
 
   @doc """
-  Resolve the cockroach binary: explicit `:bin`, then the `:bin_env` env var
-  (default `COCKROACH_BIN`), then `priv/cockroach/` of `:priv_app`, then `$PATH`.
+  Resolve the cockroach binary: the `:bin_env` env var (default `COCKROACH_BIN`),
+  then `priv/cockroach/` of `:priv_app`, then `$PATH`.
   """
   @spec bin(opts()) :: {:ok, String.t()} | {:error, String.t()}
   def bin(opts \\ []) do
@@ -127,7 +126,6 @@ defmodule CockroachLocal do
       end
 
     cond do
-      (b = opts[:bin]) && File.exists?(b) -> {:ok, b}
       b = System.get_env(env_name) -> {:ok, b}
       bundled && File.exists?(bundled) -> {:ok, bundled}
       b = System.find_executable("cockroach") -> {:ok, b}
@@ -143,8 +141,8 @@ defmodule CockroachLocal do
         [
           hostname: "localhost",
           port: opts[:port] || @default_port,
-          username: opts[:username] || "root",
-          database: opts[:database] || "defaultdb",
+          username: "root",
+          database: "defaultdb",
           ssl: false
         ]
 

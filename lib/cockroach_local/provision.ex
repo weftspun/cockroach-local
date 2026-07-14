@@ -6,9 +6,9 @@ defmodule CockroachLocal.Provision do
   Provision the single `cockroach` binary for a build target.
 
   Downloads the matching [`V-Sekai/cockroach`](https://github.com/V-Sekai/cockroach)
-  22.1 LTS single-binary release, extracts the executable, and (optionally)
-  installs it into a `priv/cockroach/` directory a release can bundle. Pure
-  Erlang/`curl` — no external archive tools required (`:zip` / `:erl_tar`).
+  22.1 LTS single-binary release, extracts the executable, and installs it into a
+  `priv/cockroach/` directory a release can bundle. Pure Erlang/`curl` — no
+  external archive tools required (`:zip` / `:erl_tar`).
 
   Downloads are cached under `~/.cache/cockroach_local/`.
 
@@ -18,32 +18,24 @@ defmodule CockroachLocal.Provision do
 
   require Logger
 
-  @default_tag "v22.1.64b21683521d9a8735ad"
+  @tag "v22.1.64b21683521d9a8735ad"
 
   # Per-target asset filename under the release tag. Windows ships under a
   # plain 22.1.22 version string rather than the pinned tag.
   @assets %{
-    {:linux, :x86_64} => "cockroach-#{@default_tag}.linux-amd64.tgz",
-    {:darwin, :aarch64} => "cockroach-#{@default_tag}.darwin-arm64.tgz",
+    {:linux, :x86_64} => "cockroach-#{@tag}.linux-amd64.tgz",
+    {:darwin, :aarch64} => "cockroach-#{@tag}.darwin-arm64.tgz",
     {:windows, :x86_64} => "cockroach-v22.1.22.windows-6.2-amd64.zip"
   }
-
-  @doc "The pinned default cockroach release tag."
-  @spec default_tag() :: String.t()
-  def default_tag, do: @default_tag
-
-  @doc "Supported `{os, cpu}` targets."
-  @spec targets() :: [{atom(), atom()}]
-  def targets, do: Map.keys(@assets)
 
   @doc """
   Download URL for a `{os, cpu}` target, or `{:error, :unsupported_target}`.
   """
-  @spec asset_url({atom(), atom()}, String.t()) :: {:ok, String.t()} | {:error, :unsupported_target}
-  def asset_url(target, tag \\ @default_tag) do
+  @spec asset_url({atom(), atom()}) :: {:ok, String.t()} | {:error, :unsupported_target}
+  def asset_url(target) do
     case Map.fetch(@assets, target) do
       {:ok, asset} ->
-        {:ok, "https://github.com/V-Sekai/cockroach/releases/download/#{tag}/#{asset}"}
+        {:ok, "https://github.com/V-Sekai/cockroach/releases/download/#{@tag}/#{asset}"}
 
       :error ->
         {:error, :unsupported_target}
@@ -51,30 +43,12 @@ defmodule CockroachLocal.Provision do
   end
 
   @doc """
-  Fetch (download + extract, cached) the cockroach executable for `target`.
-  Returns `{:ok, path}` to the extracted binary, or `{:error, reason}`.
-  """
-  @spec fetch({atom(), atom()}, keyword()) :: {:ok, String.t()} | {:error, term()}
-  def fetch(target, opts \\ []) do
-    with {:ok, url} <- asset_url(target, opts[:tag] || @default_tag) do
-      exe = if elem(target, 0) == :windows, do: "cockroach.exe", else: "cockroach"
-
-      try do
-        {:ok, fetch_tool(url, exe)}
-      rescue
-        e -> {:error, Exception.message(e)}
-      end
-    end
-  end
-
-  @doc """
   Fetch and install the cockroach executable into `priv_dir/cockroach/`, chmod
   0755, returning `{:ok, installed_path}`. Use from a release/Burrito step.
   """
-  @spec install({atom(), atom()}, String.t(), keyword()) ::
-          {:ok, String.t()} | {:error, term()}
-  def install(target, priv_dir, opts \\ []) do
-    with {:ok, bin} <- fetch(target, opts) do
+  @spec install({atom(), atom()}, String.t()) :: {:ok, String.t()} | {:error, term()}
+  def install(target, priv_dir) do
+    with {:ok, bin} <- fetch(target) do
       exe = Path.basename(bin)
       dest_dir = Path.join(priv_dir, "cockroach")
       File.mkdir_p!(dest_dir)
@@ -87,6 +61,18 @@ defmodule CockroachLocal.Provision do
   end
 
   # --- download + extract ----------------------------------------------------
+
+  defp fetch(target) do
+    with {:ok, url} <- asset_url(target) do
+      exe = if elem(target, 0) == :windows, do: "cockroach.exe", else: "cockroach"
+
+      try do
+        {:ok, fetch_tool(url, exe)}
+      rescue
+        e -> {:error, Exception.message(e)}
+      end
+    end
+  end
 
   defp fetch_tool(url, exe) do
     asset = Path.basename(url)
